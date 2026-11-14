@@ -57,24 +57,30 @@ data/catalog/              components.json (15 estimated components)
 data/missions/             earthwatch-01.json
 backend/app/models         Mission, Component, Spacecraft, SpacecraftComponent, ScientificData, DataSource
 backend/app/services       design.py — pure totals/violations
-backend/app/api/routes     health, missions, components, design
+backend/app/api/routes     health, missions, components, design, designs
+backend/app/api            design_support.py — shared mission/item resolution
 backend/app/db             base, seed, init_db
-backend/tests              pytest (29 tests)
+backend/tests              pytest (35 tests)
 frontend/src               React (api, components, lib, pages)
 ```
 
-## API surface (B2)
+## API surface (B3)
 
 `GET /api/health`, `GET /api/missions`, `GET /api/components[?category=]`,
 `GET /api/components/{id}`, `POST /api/design/calculate`,
-`POST /api/design/validate`.
+`POST /api/design/validate`, `GET /api/designs[?mission_slug=]`,
+`POST /api/designs`, `GET /api/designs/{id}`, `PUT /api/designs/{id}`.
 
 Design payloads use `{"mission_slug": "earthwatch-01", "items": [{"component_id": 1, "quantity": 1}]}`.
-Totals are SI; costs are integer USD. `validate` adds `valid` and violation codes
+Saved-design create adds `name`; update omits `mission_slug`. Totals are SI; costs
+are integer USD. `validate` adds `valid` and violation codes
 (`EMPTY_DESIGN`, `MASS_OVER_BUDGET`, `POWER_MARGIN_LOW`, `COST_OVER_BUDGET`,
-`MISSING_REQUIRED_CATEGORY`).
+`MISSING_REQUIRED_CATEGORY`). Saved designs are `Spacecraft` rows and store lines
+as `SpacecraftComponent`; duplicate component ids are merged server-side.
 
 ## Current status
 
-B2 complete: catalog, provenance rules, budgets API, tests, dashboard mission card.
-B3 next: spacecraft designer UI and persisted designs.
+B3 complete: `/designer` console (7 categories, interactive 2D schematic,
+manifest, live backend validation) and persisted design CRUD. Demo DB holds
+"EarthWatch-01 Baseline" (valid) and "High-Resolution Concept" (invalid).
+B4 next: orbit planner against the cited Earth constants.

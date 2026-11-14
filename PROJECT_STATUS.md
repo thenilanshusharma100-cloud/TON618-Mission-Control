@@ -26,7 +26,8 @@ data/catalog/            components.json — 15 estimated components
 data/missions/           earthwatch-01.json
 backend/app/models       SQLAlchemy models
 backend/app/services     design.py — pure totals and violation logic
-backend/app/api/routes   health, missions, components, design
+backend/app/api/routes   health, missions, components, design, designs
+backend/app/api           design_support.py — shared mission/item resolution
 backend/app/db           base, seed, init_db
 backend/tests            pytest suite
 frontend/src             React app (api, components, lib, pages)
@@ -53,13 +54,33 @@ frontend/src             React app (api, components, lib, pages)
 - Five new API endpoints, all verified live over HTTP.
 - 29 backend tests and a dashboard mission card driven by live API data.
 
+### B3 — Interactive spacecraft designer
+
+- Designer screen at `/designer`: category sidebar, interactive 2D spacecraft
+  schematic (approved fallback; no Three.js dependency), selected-component
+  manifest and live engineering metrics.
+- Browse all seven categories, inspect specifications and estimate rationale,
+  add, remove and change quantities (1–100, enforced on both sides).
+- Live backend validation on every edit: mass, generation, consumption, net
+  power margin, remaining mass/cost, required-subsystem coverage and violation
+  messages. No client-side physics.
+- Persisted designs on the existing `Spacecraft` / `SpacecraftComponent` models:
+  create (`POST`), list, load, update (`PUT`) through FastAPI and SQLite.
+  Duplicate component ids are merged; saved names are trimmed and validated.
+- The most recently updated design loads automatically; `+ NEW DRAFT` starts a
+  fresh design. Unsaved changes prompt before switching records.
+- Demo records: "EarthWatch-01 Baseline" (valid, 5.70 kg / $332,000 / +13.5 W)
+  and "High-Resolution Concept" (invalid: mass, cost and power faults).
+- 35 backend tests and 29 frontend tests, including designer integration tests
+  for add/quantity/remove, validation and save/load wiring.
+
 ## Database models
 
 | Model | Purpose |
 |---|---|
 | `Mission` | Mission slug, briefing, mass/cost/power-margin budgets, required categories |
 | `Component` | Catalog entry: category, mass kg, power W and role, cost USD, classification, rationale, optional source |
-| `Spacecraft` | Persisted spacecraft belonging to a mission (model exists; no API yet) |
+| `Spacecraft` | Persisted spacecraft design belonging to a mission (name, timestamps, component lines) |
 | `SpacecraftComponent` | Quantity of a component on a spacecraft; unique per spacecraft/component |
 | `ScientificData` | Physical constant: SI value, original value/unit, classification, method, source |
 | `DataSource` | Cited source: title, publisher, URL, retrieval date, kind (NASA/JPL/vendor/standard/other) |
@@ -77,6 +98,10 @@ Component categories: `structure`, `power`, `communication`, `onboard_computer`,
 | GET | `/api/components/{id}` | Component detail with provenance (404 if missing) |
 | POST | `/api/design/calculate` | Totals, remaining budgets, category breakdown |
 | POST | `/api/design/validate` | Calculation plus `valid` flag and violations |
+| GET | `/api/designs[?mission_slug=]` | Saved designs, most recently updated first |
+| POST | `/api/designs` | Create a saved design (201) |
+| GET | `/api/designs/{id}` | Load a saved design with validation |
+| PUT | `/api/designs/{id}` | Rename and replace a saved design's items |
 
 Design request body:
 
@@ -86,6 +111,13 @@ Design request body:
   "items": [{ "component_id": 1, "quantity": 1 }]
 }
 ```
+
+Saved-design create body adds `name`; update omits `mission_slug` (the mission is
+fixed when a design is created). Every saved-design response includes the same
+calculation and validation payload as `POST /api/design/validate`, plus `id`,
+`name`, `items`, `mission_id` and UTC timestamps. Missing missions and designs
+return 404 with `MISSION_NOT_FOUND` / `DESIGN_NOT_FOUND`; unknown component ids
+return 422 `UNKNOWN_COMPONENT_IDS`.
 
 Totals are SI; costs are integer USD. Violation codes: `EMPTY_DESIGN`,
 `MASS_OVER_BUDGET`, `POWER_MARGIN_LOW`, `COST_OVER_BUDGET`,
@@ -151,35 +183,29 @@ npm run test
 npm run build
 ```
 
-## Test results (last verified at commit `309d73d`)
+## Test results (B3, verified before commit)
 
 | Gate | Result |
 |---|---|
 | `ruff check .` | Passed |
-| `pytest` | 29 passed (models, constraints, seeding, calculations, API) |
+| `pytest` | 35 passed (models, constraints, seeding, calculations, API, design CRUD) |
 | `npm run typecheck` | Passed |
 | `npm run lint` | Passed |
-| `npm run test` | 8 passed in 2 files |
-| `npm run build` | Passed (production bundle generated) |
+| `npm run test` | 29 passed in 6 files |
+| `npm run build` | Passed (83 modules, production bundle generated) |
 
 One harmless warning remains: FastAPI's test client reports that `httpx` is
 deprecated in favour of `httpx2`.
 
 ## Remaining milestones
 
-- **B3 — Spacecraft designer (next):** component selection UI, live totals and
-  violations, persisted designs. The `Spacecraft` models exist, but there is no
-  persistence API or designer screen yet.
-- **B4 — Orbit planner:** orbital parameters, coverage/ground-track reasoning,
-  validated against the cited Earth constants.
+- **B4 — Orbit planner (next):** orbital parameters, coverage/ground-track
+  reasoning, validated against the cited Earth constants.
 - **B5 — Simulation and scoring:** deterministic mission run and scored report.
 - **B6 — Results and deployment:** results screen, production build and hosting.
 
-The current UI is the system-status dashboard plus the EarthWatch-01 mission
-card. Component browsing, design assembly and orbit planning are not yet
-available in the browser.
-
 ## Current status summary
 
-B1 and B2 are complete, committed and gate-verified. B2 is the latest commit
-(`309d73d`) and the working tree is clean. B3 has not started.
+B1, B2 and B3 are complete and gate-verified. B3 is the latest commit. The
+browser now exposes the dashboard and the `/designer` console; orbit planning is
+not yet available.

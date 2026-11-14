@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom"
+
 import { API_BASE } from "../api/client"
 import { useHealth, useMissions } from "../api/queries"
 import { linkLabel, linkState } from "../lib/health"
@@ -121,6 +123,12 @@ export function Dashboard() {
                   <p className="mt-1 text-[10px] leading-relaxed text-muted/80">
                     {mission.budget_rationale}
                   </p>
+                  <Link
+                    to="/designer"
+                    className="mt-4 inline-block border border-signal px-4 py-2 text-[10px] tracking-[0.2em] text-signal transition-colors hover:bg-signal hover:text-void"
+                  >
+                    OPEN DESIGN CONSOLE →
+                  </Link>
                 </article>
               ))}
             </div>

@@ -2,6 +2,7 @@ import { Link, Route, Routes } from "react-router-dom"
 
 import { AppShell } from "./components/layout/AppShell"
 import { Dashboard } from "./pages/Dashboard"
+import { Designer } from "./pages/Designer"
 
 function NotFound() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<Dashboard />} />
+        <Route path="designer" element={<Designer />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

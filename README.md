@@ -3,9 +3,10 @@
 A NASA Space Apps mission-design game. Players assemble an Earth-observation
 spacecraft, plan its orbit, run the mission, and get a scored report.
 
-**Status: B2 catalog + budgets.** The backend seeds the EarthWatch-01 mission and
-an educational component catalog, and calculates mass, power and cost budgets.
-The designer UI arrives in B3.
+**Status: B3 spacecraft designer.** The backend seeds the EarthWatch-01 mission and
+an educational component catalog, calculates mass, power and cost budgets, and
+persists spacecraft designs. The `/designer` console browses the catalog, builds a
+spacecraft, validates it live and saves/loads designs through FastAPI and SQLite.
 
 ## Stack
 
@@ -21,12 +22,13 @@ The designer UI arrives in B3.
 data/reference/          cited physical constants (source URL + original units)
 data/catalog/            component catalog (educational estimates)
 data/missions/           mission profiles
-backend/app/api/routes   health, missions, components, design
+backend/app/api/routes   health, missions, components, design, designs
+backend/app/api           shared design resolution helpers
 backend/app/models       SQLAlchemy models
 backend/app/services     pure budget calculation
 backend/app/db           engine setup, seeding, init
 backend/tests            pytest suite
-frontend/src             React app
+frontend/src             React app (dashboard, designer, API client, lib)
 ```
 
 ## Quickstart (Windows, PowerShell)
@@ -61,6 +63,10 @@ so no CORS setup is required. The database is created and seeded on startup at
 | GET | `/api/components/{id}` | Component detail with provenance |
 | POST | `/api/design/calculate` | Mass, power, cost totals and remaining budgets |
 | POST | `/api/design/validate` | Calculation plus budget violations |
+| GET | `/api/designs[?mission_slug=]` | Saved designs, newest first |
+| POST | `/api/designs` | Create a saved design |
+| GET | `/api/designs/{id}` | Load a saved design |
+| PUT | `/api/designs/{id}` | Update name and component items |
 
 Design request:
 
@@ -70,6 +76,10 @@ Design request:
   "items": [{ "component_id": 1, "quantity": 1 }]
 }
 ```
+
+Saved designs add `name` and return the same totals/validation plus record
+metadata. The UI is at `/` (status dashboard) and `/designer` (spacecraft
+console).
 
 ## Verification
 

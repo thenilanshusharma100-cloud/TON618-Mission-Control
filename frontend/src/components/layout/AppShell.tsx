@@ -35,6 +35,18 @@ export function AppShell() {
           >
             DASHBOARD
           </NavLink>
+          <NavLink
+            to="/designer"
+            className={({ isActive }) =>
+              `border-b-2 px-3 py-2 text-[11px] tracking-[0.24em] transition-colors ${
+                isActive
+                  ? "border-signal text-signal"
+                  : "border-transparent text-muted hover:text-ink"
+              }`
+            }
+          >
+            DESIGNER
+          </NavLink>
         </nav>
       </header>
 
