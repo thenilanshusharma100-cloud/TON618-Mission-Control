@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@theme {
+  --color-void: #04060b;
+  --color-panel: #0a0f18;
+  --color-panel-2: #0e1520;
+  --color-edge: #1b2635;
+  --color-ink: #e6edf3;
+  --color-muted: #8394a8;
+  --color-signal: #38e8c6;
+  --color-amber: #ffb547;
+  --color-alert: #ff5c5c;
+
+  --font-mono: "Cascadia Mono", "Consolas", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: "Segoe UI", system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-void font-mono text-ink antialiased;
+    background-image:
+      linear-gradient(rgba(56, 232, 198, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56, 232, 198, 0.035) 1px, transparent 1px),
+      radial-gradient(ellipse at 50% -20%, rgba(56, 232, 198, 0.1), transparent 60%);
+    background-size:
+      48px 48px,
+      48px 48px,
+      100% 100%;
+    background-attachment: fixed;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-signal);
+    outline-offset: 2px;
+  }
+}
