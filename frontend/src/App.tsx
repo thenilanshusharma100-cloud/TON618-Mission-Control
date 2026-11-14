@@ -3,6 +3,8 @@ import { Link, Route, Routes } from "react-router-dom"
 import { AppShell } from "./components/layout/AppShell"
 import { Dashboard } from "./pages/Dashboard"
 import { Designer } from "./pages/Designer"
+import { OrbitPlanner } from "./pages/OrbitPlanner"
+import { MissionSimulationPage } from "./pages/MissionSimulation"
 
 function NotFound() {
   return (
@@ -23,8 +25,12 @@ export default function App() {
       <Route element={<AppShell />}>
         <Route index element={<Dashboard />} />
         <Route path="designer" element={<Designer />} />
+        <Route path="orbit" element={<OrbitPlanner />} />
+        <Route path="simulation" element={<MissionSimulationPage />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
   )
 }
+
+
