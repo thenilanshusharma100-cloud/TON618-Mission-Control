@@ -1,0 +1,10 @@
+[
+  {
+    "key": "nasa-nssdca-earth-fact-sheet",
+    "title": "Earth Fact Sheet",
+    "publisher": "NASA Space Science Data Coordinated Archive (NSSDCA)",
+    "url": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html",
+    "retrieved_on": "2026-11-14",
+    "kind": "nasa"
+  }
+]

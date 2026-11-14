@@ -18,3 +18,8 @@ def to_si(value: float, unit: str) -> float:
     Raises ``pint.errors.UndefinedUnitError`` for unknown units.
     """
     return Q_(value, unit).to_base_units().magnitude
+
+
+def convert(value: float, unit: str, target_unit: str) -> float:
+    """Convert ``value`` from ``unit`` to ``target_unit``, validating dimensions."""
+    return Q_(value, unit).to(target_unit).magnitude

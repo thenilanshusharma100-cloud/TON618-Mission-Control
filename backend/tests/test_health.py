@@ -1,11 +1,7 @@
 from fastapi.testclient import TestClient
 
-from app.main import app
 
-client = TestClient(app)
-
-
-def test_health_reports_nominal() -> None:
+def test_health_reports_nominal(client: TestClient) -> None:
     response = client.get("/api/health")
 
     assert response.status_code == 200
@@ -16,7 +12,7 @@ def test_health_reports_nominal() -> None:
     assert body["units"] == "SI (pint)"
 
 
-def test_openapi_schema_is_served() -> None:
+def test_openapi_schema_is_served(client: TestClient) -> None:
     response = client.get("/openapi.json")
 
     assert response.status_code == 200

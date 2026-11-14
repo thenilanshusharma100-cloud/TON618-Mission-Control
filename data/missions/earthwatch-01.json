@@ -1,0 +1,19 @@
+{
+  "slug": "earthwatch-01",
+  "name": "EarthWatch-01",
+  "summary": "Design a small Earth-observation satellite that images priority regions, downlinks its data, and stays within mass, power and cost budgets.",
+  "briefing": "EarthWatch-01 is an introductory Earth-observation mission. Choose a spacecraft bus, a camera, power generation, communications and thermal control. The mission succeeds when every required subsystem is present, the spacecraft fits within the launch mass and cost budgets, and the solar arrays provide the required power margin over the instruments, radio and avionics.",
+  "difficulty": "introductory",
+  "max_mass_kg": 8.0,
+  "max_cost_usd": 500000,
+  "min_power_margin_w": 5.0,
+  "required_categories": [
+    "structure",
+    "power",
+    "communication",
+    "onboard_computer",
+    "payload",
+    "thermal_control"
+  ],
+  "budget_rationale": "Educational scenario budgets sized for a 3U-class educational spacecraft. These are game-design limits, not NASA requirements, cost estimates or flight constraints."
+}

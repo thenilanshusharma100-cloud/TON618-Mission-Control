@@ -1,0 +1,68 @@
+[
+  {
+    "key": "earth.gm",
+    "label": "Earth gravitational parameter (GM)",
+    "quantity_kind": "gravitational_parameter",
+    "original_value": 398600.4418,
+    "original_unit": "km^3/s^2",
+    "classification": "published_reference",
+    "source": "nasa-nssdca-earth-fact-sheet",
+    "method": null,
+    "notes": "Published value as listed in the NASA NSSDCA Earth Fact Sheet."
+  },
+  {
+    "key": "earth.radius.equatorial",
+    "label": "Earth equatorial radius",
+    "quantity_kind": "length",
+    "original_value": 6378.1,
+    "original_unit": "km",
+    "classification": "published_reference",
+    "source": "nasa-nssdca-earth-fact-sheet",
+    "method": null,
+    "notes": "Published equatorial radius from the NASA NSSDCA Earth Fact Sheet."
+  },
+  {
+    "key": "earth.radius.mean",
+    "label": "Earth volumetric mean radius",
+    "quantity_kind": "length",
+    "original_value": 6371.0,
+    "original_unit": "km",
+    "classification": "published_reference",
+    "source": "nasa-nssdca-earth-fact-sheet",
+    "method": null,
+    "notes": "Published volumetric mean radius from the NASA NSSDCA Earth Fact Sheet."
+  },
+  {
+    "key": "earth.j2",
+    "label": "Earth J2 zonal harmonic",
+    "quantity_kind": "dimensionless",
+    "original_value": 0.00108263,
+    "original_unit": "dimensionless",
+    "classification": "published_reference",
+    "source": "nasa-nssdca-earth-fact-sheet",
+    "method": null,
+    "notes": "Published J2 coefficient from the NASA NSSDCA Earth Fact Sheet."
+  },
+  {
+    "key": "earth.rotation.sidereal",
+    "label": "Earth sidereal rotation period",
+    "quantity_kind": "time",
+    "original_value": 23.9345,
+    "original_unit": "h",
+    "classification": "published_reference",
+    "source": "nasa-nssdca-earth-fact-sheet",
+    "method": null,
+    "notes": "Published sidereal rotation period from the NASA NSSDCA Earth Fact Sheet."
+  },
+  {
+    "key": "earth.solar_irradiance",
+    "label": "Solar irradiance at Earth",
+    "quantity_kind": "irradiance",
+    "original_value": 1361.0,
+    "original_unit": "W/m^2",
+    "classification": "published_reference",
+    "source": "nasa-nssdca-earth-fact-sheet",
+    "method": null,
+    "notes": "Published solar irradiance at Earth from the NASA NSSDCA Earth Fact Sheet."
+  }
+]

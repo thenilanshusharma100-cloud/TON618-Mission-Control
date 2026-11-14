@@ -30,3 +30,6 @@ target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+# UP037 conflicts with the quoted forward references SQLAlchemy and Pydantic
+# require for circular/nested model annotations.
+ignore = ["UP037"]
