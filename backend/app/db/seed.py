@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import timedelta
 from math import pi
 
 from sqlalchemy import select
@@ -7,9 +8,46 @@ from sqlalchemy.orm import Session
 from app.core.units import convert
 from app.data.catalog import SI_UNITS, Catalog
 from app.domain.enums import DataClassification
-from app.models import Component, DataSource, Mission, ScientificData
+from app.models import (
+    Component,
+    DataSource,
+    Mission,
+    ScientificData,
+    Spacecraft,
+    SpacecraftComponent,
+)
+from app.models.science import utcnow
 
 DERIVED_ANGULAR_VELOCITY_KEY = "earth.angular_velocity"
+
+DEMO_DESIGNS: tuple[tuple[str, tuple[tuple[str, int], ...]], ...] = (
+    (
+        "EarthWatch-01 Baseline",
+        (
+            ("structure-3u-frame", 1),
+            ("power-body-mounted-array", 2),
+            ("power-deployable-array", 1),
+            ("power-li-ion-battery-40wh", 2),
+            ("comm-uhf-transceiver", 1),
+            ("obc-flight-computer", 1),
+            ("payload-multispectral-imager", 1),
+            ("thermal-passive-kit", 1),
+        ),
+    ),
+    (
+        "High-Resolution Concept",
+        (
+            ("structure-6u-frame", 1),
+            ("power-deployable-array", 1),
+            ("power-li-ion-battery-40wh", 1),
+            ("comm-sband-transmitter", 1),
+            ("comm-high-gain-antenna", 1),
+            ("obc-flight-computer", 1),
+            ("payload-high-res-imager", 1),
+            ("thermal-active-control", 1),
+        ),
+    ),
+)
 
 
 @dataclass(frozen=True)
@@ -19,11 +57,19 @@ class SeedSummary:
     derived: int = 0
     components: int = 0
     missions: int = 0
+    designs: int = 0
 
 
 def seed_catalog(session: Session, catalog: Catalog) -> SeedSummary:
     """Insert catalog rows that do not exist yet. Safe to run repeatedly."""
-    counts = {"sources": 0, "constants": 0, "derived": 0, "components": 0, "missions": 0}
+    counts = {
+        "sources": 0,
+        "constants": 0,
+        "derived": 0,
+        "components": 0,
+        "missions": 0,
+        "designs": 0,
+    }
 
     sources: dict[str, DataSource] = {}
     for record in catalog.sources:
@@ -134,6 +180,51 @@ def seed_catalog(session: Session, catalog: Catalog) -> SeedSummary:
             )
         )
         counts["missions"] += 1
+
+    session.flush()
+
+    if session.scalar(select(Spacecraft).limit(1)) is None:
+        mission = session.scalar(
+            select(Mission).where(Mission.slug == mission_record.slug)
+        )
+        if mission is None:
+            raise RuntimeError("Mission seed row is missing after flush.")
+
+        components = {
+            component.slug: component
+            for component in session.scalars(select(Component)).all()
+        }
+        missing = sorted(
+            {
+                slug
+                for _, lines in DEMO_DESIGNS
+                for slug, _ in lines
+                if slug not in components
+            }
+        )
+        if missing:
+            raise RuntimeError(
+                "Demo designs reference unknown component slugs: " + ", ".join(missing)
+            )
+
+        # Seed the demos only into an empty design table. The baseline is
+        # inserted first so it keeps id 1, which the simulation page uses.
+        # Its newer timestamp keeps it first in the designs list as well.
+        seeded_at = utcnow()
+        for index, (name, lines) in enumerate(DEMO_DESIGNS):
+            timestamp = seeded_at - timedelta(seconds=index)
+            spacecraft = Spacecraft(
+                mission=mission,
+                name=name,
+                created_at=timestamp,
+                updated_at=timestamp,
+            )
+            spacecraft.components = [
+                SpacecraftComponent(component=components[slug], quantity=quantity)
+                for slug, quantity in lines
+            ]
+            session.add(spacecraft)
+            counts["designs"] += 1
 
     session.commit()
     return SeedSummary(**counts)
