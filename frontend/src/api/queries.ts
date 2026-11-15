@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import type { HealthPayload } from "../lib/health"
 import type { Mission } from "../lib/missions"
 import type { Component, DesignDetail, DesignItem, DesignValidation } from "../lib/design"
+import type { OrbitAnalysis } from "../lib/orbit"
 import { useDebouncedValue } from "../lib/useDebouncedValue"
 import { fetchJson, postJson } from "./client"
 
@@ -75,5 +76,21 @@ export function useDesignValidation(
     placeholderData: keepPreviousData,
     staleTime: 5_000,
     retry: false,
+  })
+}
+
+export function useOrbitAnalysis(altitudeKm: number, inclinationDeg: number, delayMs = 250) {
+  const altitude = useDebouncedValue(altitudeKm, delayMs)
+  const inclination = useDebouncedValue(inclinationDeg, delayMs)
+  return useQuery({
+    queryKey: ["orbit-analysis", altitude, inclination],
+    queryFn: () =>
+      postJson<OrbitAnalysis>("/orbit/analyze", {
+        altitude_km: altitude,
+        inclination_deg: inclination,
+      }),
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+    retry: 1,
   })
 }

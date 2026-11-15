@@ -25,8 +25,9 @@ data/reference/          cited constants: sources.json, earth_constants.json
 data/catalog/            components.json — 15 estimated components
 data/missions/           earthwatch-01.json
 backend/app/models       SQLAlchemy models
-backend/app/services     design.py — pure totals and violation logic
-backend/app/api/routes   health, missions, components, design, designs
+backend/app/services     design.py — totals/violations; orbit.py — J2/SSO;
+                         simulation.py — timeline, battery, scoring
+backend/app/api/routes   health, missions, components, design, designs, orbit, simulation
 backend/app/api           design_support.py — shared mission/item resolution
 backend/app/db           base, seed, init_db
 backend/tests            pytest suite
@@ -54,6 +55,37 @@ frontend/src             React app (api, components, lib, pages)
 - Five new API endpoints, all verified live over HTTP.
 - 29 backend tests and a dashboard mission card driven by live API data.
 
+### B4 — Orbit planner (commit `d7af8db`)
+
+- **Orbit planner at `/orbit`**: altitude (160–2000 km), inclination (0–180°),
+  J2 nodal precession, sun-synchronous solver, 3D WebGL globe, orbital metrics
+  panel, reference-constant documentation, and model assumptions/limitations.
+- **Physics engine** (`backend/app/services/orbit.py`): circular LEO formulas,
+  first-order J2 precession `Ω̇ = −(3/2) J₂ (R/r)² n cos i`, sun-synchronous
+  inclination solver from `acos[−(2/3)Ω̇_target / (J₂(R/r)² n)]`, all SI
+  internally, Pint-backed unit conversion in the API layer.
+- **API** `POST /api/orbit/analyze`: returns orbital radius, velocity, period,
+  specific orbital energy, angular momentum per unit mass, mean motion, orbits
+  per day, nodal precession rate, and SSO status with required inclination and
+  delta.
+- **Scientific integrity**: gravitational parameter `μ = 3.986004418×10¹⁴ m³/s²`,
+  equatorial radius `R_E = 6378.1 km`, J₂ `0.00108263` — all from the seeded
+  NASA NSSDCA Earth Fact Sheet data. 550 km explicitly labelled as an educational
+  assumption, not a NASA mission specification.
+- **Visualization**: Three.js 3D scene with Earth sphere, wiregrid, equator,
+  starfield, satellite marker on J2-precessing orbit, sun-synchronous green
+  badge, drag-to-rotate and scroll-to-zoom.
+- **Assumptions document**: 5 named assumptions (circular Keplerian, J2 only,
+  radius = R_E + h, SSO convention = 1 rev/365.2422-day tropical year,
+  first-order secular J2).
+- **Limitations document**: 4 named limitations (no drag, no solar/lunar
+  perturbations, no higher zonal harmonics, steady-state not propagated
+  ephemeris, educational model only).
+- **Testing**: 13 backend pytest (orbital elements match closed-form, J2
+  precession correctness, SSO inclination varies with altitude, model rejects
+  invalid inputs) and 42 frontend Vitest (domain clamps, formatting, planner
+  integration, engine failure surface).
+
 ### B3 — Interactive spacecraft designer
 
 - Designer screen at `/designer`: category sidebar, interactive 2D spacecraft
@@ -73,6 +105,29 @@ frontend/src             React app (api, components, lib, pages)
   and "High-Resolution Concept" (invalid: mass, cost and power faults).
 - 35 backend tests and 29 frontend tests, including designer integration tests
   for add/quantity/remove, validation and save/load wiring.
+
+### B5 — Mission simulation and scoring (commit `e2053ce`)
+
+- **Simulation console at `/simulation`**: loads the latest saved design and the
+  orbit selected in the planner, runs the mission against the seeded budgets,
+  and plays back a 30-day timeline with START/PAUSE/RESUME/RESET. Shows the
+  100-point score, per-category breakdown, readiness, warnings and violations.
+- **Engine** (`backend/app/services/simulation.py`): deterministic 30-day run
+  sampled once per completed orbit; 60-second battery integration with
+  generation, consumption, eclipse and ground-station passes; communications
+  contact fraction; payload state; score derived from orbit achievement, power,
+  mass, communications, payload and budget; readiness derived from the run.
+- **API** `POST /api/simulation/analyze`: accepts `design_id`, `mission_slug`
+  and orbit-only `design_data` (`altitude_km`, `inclination_deg`); reloads the
+  saved design and catalog and recomputes mass, power, cost and category
+  coverage server-side. Unknown designs return 404 `DESIGN_NOT_FOUND`; empty
+  designs and mission mismatches return 422; missing orbit reference data
+  returns 503.
+- **UI**: typed response contract, real error surfacing, playback controls, and
+  removal of the unused fake client-side simulation stub.
+- **Testing**: 12 simulation backend tests (including the exact request that
+  previously raised a 503) and 6 simulation UI tests. The complete workflow was
+  verified in the browser against both the valid and invalid demo designs.
 
 ## Database models
 
@@ -102,6 +157,8 @@ Component categories: `structure`, `power`, `communication`, `onboard_computer`,
 | POST | `/api/designs` | Create a saved design (201) |
 | GET | `/api/designs/{id}` | Load a saved design with validation |
 | PUT | `/api/designs/{id}` | Rename and replace a saved design's items |
+| POST | `/api/orbit/analyze` | J2 precession, SSO solver and orbital metrics |
+| POST | `/api/simulation/analyze` | 30-day mission run, score and readiness |
 
 Design request body:
 
@@ -183,29 +240,30 @@ npm run test
 npm run build
 ```
 
-## Test results (B3, verified before commit)
+## Test results (B5, verified before commit)
 
 | Gate | Result |
 |---|---|
 | `ruff check .` | Passed |
-| `pytest` | 35 passed (models, constraints, seeding, calculations, API, design CRUD) |
+| `pytest` | **59 passed** |
 | `npm run typecheck` | Passed |
-| `npm run lint` | Passed |
-| `npm run test` | 29 passed in 6 files |
-| `npm run build` | Passed (83 modules, production bundle generated) |
+| `npm run lint` | Passed (0 warnings) |
+| `npm run test` | **48 passed** |
+| `npm run build` | Passed, production bundle generated |
 
-One harmless warning remains: FastAPI's test client reports that `httpx` is
-deprecated in favour of `httpx2`.
+Live HTTP checks: `POST /api/simulation/analyze` returned 200 both directly
+against `127.0.0.1:8000` and through the Vite proxy at `localhost:5173`. The
+valid demo design scored 95 with status `success`; the invalid design scored 55
+with status `failure` and the expected mass, power and cost violations.
 
 ## Remaining milestones
 
-- **B4 — Orbit planner (next):** orbital parameters, coverage/ground-track
-  reasoning, validated against the cited Earth constants.
-- **B5 — Simulation and scoring:** deterministic mission run and scored report.
-- **B6 — Results and deployment:** results screen, production build and hosting.
+- **B6 — Deployment (next):** production build, hosting and final deployment
+  documentation.
 
 ## Current status summary
 
-B1, B2 and B3 are complete and gate-verified. B3 is the latest commit. The
-browser now exposes the dashboard and the `/designer` console; orbit planning is
-not yet available.
+B1–B5 are complete and gate-verified. The browser exposes the dashboard, the
+`/designer` console, the `/orbit` planner and the `/simulation` console. The
+simulation workflow has been verified end-to-end in the browser; deployment has
+not started.

@@ -47,6 +47,30 @@ export function AppShell() {
           >
             DESIGNER
           </NavLink>
+          <NavLink
+            to="/orbit"
+            className={({ isActive }) =>
+              `border-b-2 px-3 py-2 text-[11px] tracking-[0.24em] transition-colors ${
+                isActive
+                  ? "border-signal text-signal"
+                  : "border-transparent text-muted hover:text-ink"
+              }`
+            }
+          >
+            ORBIT PLANNER
+          </NavLink>
+          <NavLink
+            to="/simulation"
+            className={({ isActive }) =>
+              `border-b-2 px-3 py-2 text-[11px] tracking-[0.24em] transition-colors ${
+                isActive
+                  ? "border-signal text-signal"
+                  : "border-transparent text-muted hover:text-ink"
+              }`
+            }
+          >
+            SIMULATION
+          </NavLink>
         </nav>
       </header>
 

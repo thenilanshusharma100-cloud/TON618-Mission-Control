@@ -8,7 +8,6 @@ import {
   clampAltitude,
   clampInclination,
   formatAngle,
-  formatEpoch,
   formatKilometres,
   formatPeriod,
   formatPrecession,
@@ -47,21 +46,29 @@ export function OrbitPlanner() {
   const orbitQuery = useOrbitAnalysis(altitudeKm, inclinationDeg)
   const analysis = orbitQuery.data
 
-  const inputsMatch =
-    analysis !== undefined &&
-    Math.abs(analysis.altitude_km - altitudeKm) < 1e-6 &&
-    Math.abs(analysis.inclination_deg - inclinationDeg) < 1e-6
+  const handleAltitude = (km: number) => {
+    setAltitudeKm(clampAltitude(km))
+    // Save orbit params to localStorage when altitude changes
+    localStorage.setItem("orbit_altitude_km", altitudeKm.toString())
+    localStorage.setItem("orbit_inclination_deg", inclinationDeg.toString())
+  }
 
-  const isSunSynchronous = Boolean(inputsMatch && analysis?.sun_synchronous.is_sun_synchronous)
-  const requiredInclination = analysis?.sun_synchronous.required_inclination_deg
-  const recalculating = orbitQuery.isFetching
-  const waiting = analysis === undefined && !orbitQuery.isError
+  const handleInclination = (deg: number) => {
+    setInclinationDeg(clampInclination(deg))
+    // Save orbit params to localStorage when inclination changes
+    localStorage.setItem("orbit_altitude_km", altitudeKm.toString())
+    localStorage.setItem("orbit_inclination_deg", inclinationDeg.toString())
+  }
 
-  const handleAltitude = (km: number) => setAltitudeKm(clampAltitude(km))
-  const handleInclination = (deg: number) => setInclinationDeg(clampInclination(deg))
   const handleApplySso = () => {
-    if (!analysis || !inputsMatch || recalculating) return
+    if (!analysis) return
+    const altitudeMatch = Math.abs(analysis.altitude_km - altitudeKm) < 1e-6
+    const inclinationMatch = Math.abs(analysis.inclination_deg - inclinationDeg) < 1e-6
+    if (!altitudeMatch || !inclinationMatch || orbitQuery.isFetching) return
     setInclinationDeg(analysis.sun_synchronous.required_inclination_deg)
+    // Also save the new orbit parameters
+    localStorage.setItem("orbit_altitude_km", altitudeKm.toString())
+    localStorage.setItem("orbit_inclination_deg", inclinationDeg.toString())
   }
 
   return (
@@ -84,7 +91,7 @@ export function OrbitPlanner() {
             EARTH · CIRCULAR LEO
           </span>
           <p className="mt-2 text-[9px] tracking-[0.16em] text-muted">
-            REFERENCE EPOCH {formatEpoch(analysis?.epoch_utc)}
+            REFERENCE EPOCH {"—"}
           </p>
         </div>
       </div>
@@ -111,8 +118,8 @@ export function OrbitPlanner() {
         <OrbitConfigPanel
           altitudeKm={altitudeKm}
           inclinationDeg={inclinationDeg}
-          requiredInclinationDeg={requiredInclination}
-          isSunSynchronous={isSunSynchronous}
+          requiredInclinationDeg={analysis?.sun_synchronous?.required_inclination_deg}
+          isSunSynchronous={analysis?.sun_synchronous?.is_sun_synchronous === true}
           onAltitude={handleAltitude}
           onInclination={handleInclination}
           onApplySso={handleApplySso}
@@ -123,8 +130,8 @@ export function OrbitPlanner() {
             altitudeKm={altitudeKm}
             inclinationDeg={inclinationDeg}
             radiusM={analysis?.radius_m}
-            earthRadiusM={analysis?.constants.equatorial_radius_m}
-            isSunSynchronous={isSunSynchronous}
+            earthRadiusM={analysis?.constants?.equatorial_radius_m}
+            isSunSynchronous={analysis?.sun_synchronous?.is_sun_synchronous === true}
           />
 
           <section className="grid grid-cols-2 gap-2 md:grid-cols-3" aria-label="Orbital metrics">
@@ -165,136 +172,120 @@ export function OrbitPlanner() {
                   ? `SSO TARGET ${formatPrecession(analysis.sun_synchronous.target_rate_rad_s)}`
                   : "AWAITING ENGINE"
               }
-              tone={isSunSynchronous ? "text-signal" : "text-amber"}
+              tone={analysis?.sun_synchronous?.is_sun_synchronous === true ? "text-signal" : "text-amber"}
             />
           </section>
 
           <div className="flex items-center justify-between gap-3 border border-edge bg-panel px-4 py-2 text-[9px] tracking-[0.14em]">
             <span className="text-muted">
-              {waiting
-                ? "COMPUTING ORBIT…"
-                : recalculating
-                  ? "RECOMPUTING WITH LATEST INPUTS…"
-                  : "SI SERVICE · μ, r AND J2 FROM SEEDED NASA NSSDCA DATA"}
+              {orbitQuery.isFetching ? "COMPUTING ORBIT…"
+                : analysis === undefined ? "AWAITING ENGINE…"
+                  : "RECOMPUTING WITH LATEST INPUTS…"}
             </span>
             <span className="text-muted/70">
               {analysis ? `${analysis.orbits_per_day.toFixed(2)} REV/DAY` : "—"}
             </span>
           </div>
         </div>
-
-        <aside className="space-y-3" aria-label="Orbit analysis">
-          <section className="border border-edge bg-panel p-4">
-            <div className="flex items-baseline justify-between gap-2">
-              <p className="text-[10px] tracking-[0.3em] text-muted">SUN-SYNCHRONOUS</p>
-              <span
-                className={`border px-2 py-0.5 text-[8px] tracking-[0.16em] ${
-                  isSunSynchronous
-                    ? "border-signal/50 bg-signal/10 text-signal"
-                    : "border-amber/50 bg-amber/10 text-amber"
-                }`}
-              >
-                {isSunSynchronous ? "LOCKED" : "NOT SSO"}
-              </span>
-            </div>
-
-            <dl className="mt-3 space-y-2 text-[10px]">
-              <div className="flex items-baseline justify-between gap-3 border-b border-edge/60 pb-2">
-                <dt className="text-muted">CURRENT INCLINATION</dt>
-                <dd className="tabular-nums text-ink">{formatAngle(inclinationDeg)}</dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-3 border-b border-edge/60 pb-2">
-                <dt className="text-muted">REQUIRED INCLINATION</dt>
-                <dd className="tabular-nums text-amber">
-                  {requiredInclination === undefined ? "—" : formatAngle(requiredInclination, 3)}
-                </dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-3 border-b border-edge/60 pb-2">
-                <dt className="text-muted">DELTA</dt>
-                <dd className="tabular-nums text-ink">
-                  {analysis
-                    ? `${analysis.sun_synchronous.inclination_delta_deg >= 0 ? "+" : ""}${analysis.sun_synchronous.inclination_delta_deg.toFixed(3)}°`
-                    : "—"}
-                </dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-3 border-b border-edge/60 pb-2">
-                <dt className="text-muted">TARGET NODAL RATE</dt>
-                <dd className="tabular-nums text-ink">
-                  {analysis
-                    ? formatPrecession(analysis.sun_synchronous.target_rate_rad_s)
-                    : "—"}
-                </dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-muted">CURRENT NODAL RATE</dt>
-                <dd className="tabular-nums text-ink">
-                  {analysis ? formatPrecession(analysis.nodal_precession_rad_s) : "—"}
-                </dd>
-              </div>
-            </dl>
-
-            <p className="mt-3 text-[10px] leading-relaxed text-muted/80">
-              The solver finds the inclination whose J2 precession matches one eastward
-              revolution per 365.2422-day mean tropical year. A 1 % rate tolerance defines
-              the badge.
-            </p>
-          </section>
-
-          {analysis ? (
-            <section className="border border-edge bg-panel p-4">
-              <p className="text-[10px] tracking-[0.3em] text-muted">REFERENCE CONSTANTS</p>
-              <dl className="mt-3 space-y-2 text-[10px]">
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-muted">μ</dt>
-                  <dd className="tabular-nums text-ink">
-                    {formatScientific(analysis.constants.gravitational_parameter_m3_s2, 4)} m³/s²
-                  </dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-muted">R_E</dt>
-                  <dd className="tabular-nums text-ink">
-                    {formatKilometres(analysis.constants.equatorial_radius_m)}
-                  </dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-muted">J2</dt>
-                  <dd className="tabular-nums text-ink">
-                    {analysis.constants.j2.toExponential(5)}
-                  </dd>
-                </div>
-              </dl>
-              <p className="mt-3 border-t border-edge/60 pt-2 text-[9px] leading-relaxed text-muted">
-                PUBLISHED REFERENCE · NASA NSSDCA
-              </p>
-              <a
-                href={analysis.constants.source_url}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-1 block text-[10px] text-signal underline-offset-2 hover:underline"
-              >
-                {analysis.constants.source_title} ↗
-              </a>
-              <p className="mt-1 text-[8px] tracking-[0.1em] text-muted/70">
-                RETRIEVED {analysis.constants.retrieved_on} · LOADED FROM SEEDED DATABASE
-              </p>
-            </section>
-          ) : null}
-
-          <section className="border border-edge bg-panel p-4">
-            <p className="text-[10px] tracking-[0.3em] text-muted">PLANNER DOMAIN</p>
-            <ul className="mt-3 space-y-1.5 text-[9px] leading-relaxed text-muted">
-              <li>ALTITUDE · 160–2000 KM</li>
-              <li>INCLINATION · 0–180 DEG</li>
-              <li>ECCENTRICITY · 0 (CIRCULAR)</li>
-              <li>GRAVITY · TWO-BODY + J2</li>
-              <li>EPOCH · STEADY-STATE SNAPSHOT</li>
-            </ul>
-            <p className="mt-3 text-[9px] leading-relaxed text-muted/70">
-              Not a propagated ephemeris, flight-dynamics product or collision-avoidance tool.
-            </p>
-          </section>
-        </aside>
       </div>
+
+      <aside className="space-y-3" aria-label="Orbit analysis">
+        <section className="border border-edge bg-panel p-4">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-[10px] tracking-[0.3em] text-muted">SUN-SYNCHRONOUS</p>
+            <span
+              className={`border px-2 py-0.5 text-[8px] tracking-[0.16em] ${
+                analysis?.sun_synchronous?.is_sun_synchronous === true
+                  ? "border-signal/50 bg-signal/10 text-signal"
+                  : "border-amber/50 bg-amber/10 text-amber"}
+              }`}
+            >
+              {analysis?.sun_synchronous?.is_sun_synchronous === true ? "LOCKED" : "NOT SSO"}
+            </span>
+          </div>
+
+          <dl className="mt-3 space-y-2 text-[10px]">
+            <div className="flex items-baseline justify-between gap-3 border-b border-edge/60 pb-2">
+              <dt className="text-muted">CURRENT INCLINATION</dt>
+              <dd className="tabular-nums text-ink">{formatAngle(inclinationDeg)}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3 border-b border-edge/60 pb-2">
+              <dt className="text-muted">REQUIRED INCLINATION</dt>
+              <dd className="tabular-nums text-amber">
+                {analysis?.sun_synchronous?.required_inclination_deg !== undefined
+                  ? formatAngle(analysis.sun_synchronous.required_inclination_deg, 3)
+                  : "—"}
+              </dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3 border-b border-edge/60 pb-2">
+              <dt className="text-muted">DELTA</dt>
+              <dd className="tabular-nums text-ink">
+                {analysis?.sun_synchronous?.inclination_delta_deg !== undefined
+                  ? `${analysis.sun_synchronous.inclination_delta_deg >= 0 ? "+" : ""}${analysis.sun_synchronous.inclination_delta_deg.toFixed(3)}°`
+                  : "—"}
+              </dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-muted">TARGET NODAL RATE</dt>
+              <dd className="tabular-nums text-ink">
+                {analysis?.sun_synchronous?.target_rate_rad_s !== undefined
+                  ? formatPrecession(analysis.sun_synchronous.target_rate_rad_s)
+                  : "—"}
+              </dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-muted">CURRENT NODAL RATE</dt>
+              <dd className="tabular-nums text-ink">
+                {analysis?.nodal_precession_rad_s !== undefined
+                  ? formatPrecession(analysis.nodal_precession_rad_s)
+                  : "—"}
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <section className="border border-edge bg-panel p-4">
+          <p className="text-[10px] tracking-[0.3em] text-muted">REFERENCE CONSTANTS</p>
+          <dl className="mt-3 space-y-2 text-[10px]">
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-muted">μ</dt>
+              <dd className="tabular-nums text-ink">
+                {analysis?.constants?.gravitational_parameter_m3_s2 !== undefined
+                  ? formatScientific(analysis.constants.gravitational_parameter_m3_s2, 4)
+                  : "—"} m³/s²
+              </dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-muted">R_E</dt>
+              <dd className="tabular-nums text-ink">
+                {analysis?.constants?.equatorial_radius_m !== undefined
+                  ? formatKilometres(analysis.constants.equatorial_radius_m)
+                  : "—"}
+              </dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-muted">J2</dt>
+              <dd className="tabular-nums text-ink">
+                {analysis?.constants?.j2 !== undefined ? analysis.constants.j2.toExponential(5) : "—"}
+              </dd>
+            </div>
+          </dl>
+          <p className="mt-3 border-t border-edge/60 pt-2 text-[9px] leading-relaxed text-muted">
+            PUBLISHED REFERENCE · NASA NSSDCA
+          </p>
+          <a
+            href={analysis?.constants?.source_url}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-1 block text-[10px] text-signal underline-offset-2 hover:underline"
+          >
+            {analysis?.constants?.source_title} ↗
+          </a>
+          <p className="mt-1 text-[8px] tracking-[0.1em] text-muted/70">
+            RETRIEVED {analysis?.constants?.retrieved_on} · LOADED FROM SEEDED DATABASE
+          </p>
+        </section>
+      </aside>
 
       <section className="mt-4 grid gap-4 lg:grid-cols-3" aria-label="Orbit model documentation">
         <div className="border border-edge bg-panel p-4">
@@ -319,7 +310,7 @@ export function OrbitPlanner() {
                 {assumption}
               </li>
             ))}
-            {!analysis ? <li className="text-muted/60">AWAITING ENGINE</li> : null}
+            {analysis ? null : <li className="text-muted/60">AWAITING ENGINE</li>}
           </ul>
         </div>
 
@@ -331,7 +322,7 @@ export function OrbitPlanner() {
                 {limitation}
               </li>
             ))}
-            {!analysis ? <li className="text-muted/60">AWAITING ENGINE</li> : null}
+            {analysis ? null : <li className="text-muted/60">AWAITING ENGINE</li>}
           </ul>
         </div>
       </section>
